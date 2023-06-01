@@ -41,6 +41,15 @@ export const renderEditForm = async (req, res) => {
   res.render("notes/edit-note", { note });
 };
 
+export const toggleNoteDone = async (req, res) => {
+  const { id } = req.params;
+  const note = await Note.findById(id);
+  note.done = !note.done;
+  await note.save();
+  res.redirect("/notes");
+};
+
+
 export const updateNote = async (req, res) => {
   const { title, description, done } = req.body;
   await Note.findByIdAndUpdate(req.params.id, { title, description, done });
