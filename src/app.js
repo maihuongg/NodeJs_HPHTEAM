@@ -33,49 +33,91 @@ const hbs = exphbs.create({
 });
 app.engine(".hbs", hbs.engine);
 app.set("view engine", ".hbs");
-
-// middlewares
-app.use(morgan("dev"));
-app.use(express.urlencoded({ extended: false }));
-app.use(methodOverride("_method"));
-app.use(
+//middlewares - behavior design pattern
+const middlewareChain = [
+  morgan("dev"),
+  express.urlencoded({ extended: false }),
+  methodOverride("_method"),
   session({
     secret: "secret",
     resave: true,
     saveUninitialized: true,
     store: MongoStore.create({ mongoUrl: MONGODB_URI }),
-  })
-);
-app.use(passport.initialize());
-app.use(passport.session());
-app.use(flash());
+  }),
+  passport.initialize(),
+  passport.session(),
+  flash(),
+  (req, res, next) => {
+    // Global Variables
+    res.locals.success_msg = req.flash("success_msg");
+    res.locals.error_msg = req.flash("error_msg");
+    res.locals.error = req.flash("error");
+    res.locals.user = req.user || null;
+    next();
+  },
+   // routes
+  indexRoutes,
+  userRoutes,
+  notesRoutes,
+  // staticfile
+  express.static(join(__dirname, "public")),
+  (req, res, next) => {
+    return res.status(404).render("404");
+  },
+  (error, req, res, next) => {
+    res.status(error.status || 500);
+    res.render("error", {
+      error,
+    });
+  },
+];
 
-// Global Variables
-app.use((req, res, next) => {
-  res.locals.success_msg = req.flash("success_msg");
-  res.locals.error_msg = req.flash("error_msg");
-  res.locals.error = req.flash("error");
-  res.locals.user = req.user || null;
-  next();
-});
+// Apply middleware chain
+middlewareChain.forEach((middleware) => app.use(middleware));
 
-// routes
-app.use(indexRoutes);
-app.use(userRoutes);
-app.use(notesRoutes);
 
-// static files
-app.use(express.static(join(__dirname, "public")));
+// middlewares
+// app.use(morgan("dev"));
+// app.use(express.urlencoded({ extended: false }));
+// app.use(methodOverride("_method"));
+// app.use(
+//   session({
+//     secret: "secret",
+//     resave: true,
+//     saveUninitialized: true,
+//     store: MongoStore.create({ mongoUrl: MONGODB_URI }),
+//   })
+// );
+// app.use(passport.initialize());
+// app.use(passport.session());
+// app.use(flash());
 
-app.use((req, res, next) => {
-  return res.status(404).render("404");
-});
+// // Global Variables
+// app.use((req, res, next) => {
+//   res.locals.success_msg = req.flash("success_msg");
+//   res.locals.error_msg = req.flash("error_msg");
+//   res.locals.error = req.flash("error");
+//   res.locals.user = req.user || null;
+//   next();
+// });
 
-app.use((error, req, res, next) => {
-  res.status(error.status || 500);
-  res.render("error", {
-    error,
-  });
-});
+// // routes
+// app.use(indexRoutes);
+// app.use(userRoutes);
+// app.use(notesRoutes);
+
+// // static files
+// app.use(express.static(join(__dirname, "public")));
+
+// app.use((req, res, next) => {
+//   return res.status(404).render("404");
+// });
+
+// app.use((error, req, res, next) => {
+//   res.status(error.status || 500);
+//   res.render("error", {
+//     error,
+//   });
+// });
 
 export default app;
